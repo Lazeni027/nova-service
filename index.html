@@ -491,10 +491,6 @@ nav a:hover {
     box-shadow: var(--shadow-xl);
 }
 
-.btn-whatsapp-contact i {
-    font-size: 1.5rem;
-}
-
 .btn-call-contact {
     display: inline-flex;
     align-items: center;
@@ -692,7 +688,6 @@ footer {
         grid-template-columns: 1fr;
     }
     
-    /* Sous-prestations en deux colonnes sur mobile aussi */
     .sub-services-list {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.5rem;
@@ -865,8 +860,8 @@ footer {
         <span></span><span></span><span></span><span></span>
     </div>
     <h2>Mariam</h2>
-    <p id="welcomeText">Bienvenue chez NOVA Academy !</p>
-    <button onclick="closeWelcome()">Commencer</button>
+    <p id="welcomeText">👋 Bienvenue chez NOVA Academy ! Cliquez sur "Commencer" pour que je vous guide.</p>
+    <button id="startVoiceBtn" onclick="startVoiceWelcome()">🔊 Commencer</button>
 </div>
 
 <script>
@@ -987,10 +982,6 @@ function toggleServiceCard(card) {
     }
 }
 
-// Suppression du scroll automatique pour fermer les services
-// On ne ferme plus au scroll, seule la croix rouge ferme
-// (l'utilitaire scroll est retiré)
-
 // Fonctions menu mobile
 function toggleMobileMenu() {
     const burger = document.getElementById('burgerMenu');
@@ -1068,8 +1059,9 @@ function populateServices() {
     });
 }
 
-// Voix Mariam
+// Voix Mariam - Version corrigée pour mobile
 let currentUtterance = null;
+let voiceInitialized = false;
 
 function stopSpeaking() {
     if (currentUtterance) {
@@ -1078,26 +1070,62 @@ function stopSpeaking() {
     }
 }
 
+// Fonction pour initialiser la synthèse vocale (nécessaire sur mobile)
+function initSpeechSynthesis() {
+    if (voiceInitialized) return;
+    // Sur mobile, il faut "réveiller" la synthèse vocale avec un texte court
+    const utterance = new SpeechSynthesisUtterance(" ");
+    utterance.volume = 0;
+    window.speechSynthesis.speak(utterance);
+    voiceInitialized = true;
+}
+
 function speakMariam(text) {
+    // Arrêter toute parole en cours
     stopSpeaking();
+    
+    // Créer une nouvelle utterance
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'fr-FR';
-    utterance.rate = 1.2;
+    utterance.rate = 1.1;
     utterance.pitch = 1.1;
     utterance.volume = 1;
     
+    // Sélectionner une voix française
     const setVoice = () => {
         const voices = window.speechSynthesis.getVoices();
-        let selectedVoice = voices.find(v => v.lang.includes('fr') && v.name.includes('Google'));
-        if (!selectedVoice) selectedVoice = voices.find(v => v.lang.includes('fr'));
+        // Chercher une voix française naturelle
+        let selectedVoice = voices.find(v => v.lang === 'fr-FR' && (v.name.includes('Google') || v.name.includes('Samantha')));
+        if (!selectedVoice) selectedVoice = voices.find(v => v.lang === 'fr-FR');
+        if (!selectedVoice) selectedVoice = voices.find(v => v.lang.startsWith('fr'));
         if (selectedVoice) utterance.voice = selectedVoice;
+        
+        // Parler
         window.speechSynthesis.speak(utterance);
     };
     
-    if (window.speechSynthesis.getVoices().length > 0) setVoice();
-    else window.speechSynthesis.onvoiceschanged = setVoice;
+    // Attendre que les voix soient chargées
+    if (window.speechSynthesis.getVoices().length > 0) {
+        setVoice();
+    } else {
+        window.speechSynthesis.onvoiceschanged = setVoice;
+    }
     
     currentUtterance = utterance;
+}
+
+// Démarrer l'accueil vocal UNIQUEMENT après interaction utilisateur
+function startVoiceWelcome() {
+    // Initialiser la synthèse vocale
+    initSpeechSynthesis();
+    
+    // Petit délai pour que l'initialisation se fasse
+    setTimeout(() => {
+        speakMariam("Bienvenue chez NOVA Academy. Je suis Mariam, votre assistante. Explorez nos services professionnels. Cliquez sur un service pour voir les détails.");
+    }, 100);
+    
+    // Fermer la popup
+    closeWelcome();
 }
 
 function closeWelcome() {
@@ -1106,28 +1134,16 @@ function closeWelcome() {
     document.getElementById('iaWelcome').style.display = 'none';
 }
 
-// Démarrer l'accueil
+// Afficher la popup mais sans parler automatiquement
 setTimeout(() => {
     document.getElementById('iaOverlay').style.display = 'block';
     document.getElementById('iaWelcome').style.display = 'block';
-    speakMariam("Bienvenue chez NOVA Academy. Je suis Mariam, votre assistante. Explorez nos services professionnels.");
+    // Ne pas parler automatiquement sur mobile - l'utilisateur doit cliquer sur "Commencer"
 }, 500);
-
-// Auto fermeture après 8 secondes
-setTimeout(() => {
-    if (document.getElementById('iaWelcome').style.display !== 'none') {
-        closeWelcome();
-    }
-}, 8000);
 
 // Initialisation
 generateServices();
 populateServices();
-
-// Empêcher la propagation des clics sur les boutons pour éviter la fermeture indésirable
-document.addEventListener('click', function(e) {
-    // Ne rien faire de spécial, les boutons ont déjà stopPropagation
-});
 </script>
 
 </body>
